@@ -49,7 +49,7 @@ self.addEventListener("install", (event) => {
             if (response) {
               return response;
             } else if (event.request.headers.get("accept").includes("text/html")) {
-              // return the cached shit
+              // return the cached stuff
               return caches.match("/");
             }
           });
