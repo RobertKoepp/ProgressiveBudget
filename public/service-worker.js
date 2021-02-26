@@ -28,31 +28,34 @@ self.addEventListener("install", (event) => {
   self.addEventListener("fetch", (event) => {
     // We only want to call event.respondWith() if this is a navigation request
     // for an HTML page.
-    if (event.request.mode === "navigate") {
+    if (event.request.url.includes ("/api/")) {
       event.respondWith(
-        (async () => {
-          try {
-            // First, try to use the navigation preload response if it's supported.
-            const preloadResponse = await event.preloadResponse;
-            if (preloadResponse) {
-              return preloadResponse;
-            }
-  
-            // Always try the network first.
-            const networkResponse = await fetch(event.request);
-            return networkResponse;
-          } catch (error) {
-            // catch is only triggered if an exception is thrown, which is likely
-            // due to a network error.
-            // If fetch() returns a valid HTTP response with a response code in
-            // the 4xx or 5xx range, the catch() will NOT be called.
-            console.log("Fetch failed; returning offline page instead.", error);
-  
-            const cache = await caches.open(CACHE_NAME);
-            const cachedResponse = await cache.match(OFFLINE_URL);
-            return cachedResponse;
-          }
-        })()
+        caches.open(DATA_CACHE_NAME).then(function(cache){
+            return fetch(event.request).then(function(response){
+                if(response.status === 200){
+                    cache.put(event.request.url, response.clone())
+                }
+                return response
+            }).catch(function(err){
+                return cache.match(event.request)
+            })
+        })
       );
+      return;
     }
+    event.respondWith(//jeezuz
+        fetch(event.request).catch(function() {
+          return caches.match(event.request).then(function(response) {
+            if (response) {
+              return response;
+            } else if (event.request.headers.get("accept").includes("text/html")) {
+              // return the cached shit
+              return caches.match("/");
+            }
+          });
+        })
+      );
+
+
+
 });
